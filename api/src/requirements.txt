@@ -1,6 +1,9 @@
--f https://download.pytorch.org/whl/torch_stable.html
+# PyTorch CPU version for deployment
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.0.1+cpu
-torchvision
+torchvision==0.15.2+cpu
+
+# Core dependencies
 numpy
 flask>=2.0.0
 gunicorn
