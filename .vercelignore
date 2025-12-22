@@ -1,0 +1,7 @@
+# Ignore Python API backend (deployed separately to Render)
+api/
+*.pth
+*.pyc
+__pycache__/
+.venv/
+venv/
