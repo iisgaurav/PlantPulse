@@ -11,7 +11,7 @@ const withMDX = require("@next/mdx")({
     // If you use `MDXProvider`, uncomment the following line.
     // providerImportSource: "@mdx-js/react",
   },
-})
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -20,9 +20,14 @@ const nextConfig = {
   // Optionally, add any other Next.js config below
   reactStrictMode: true,
   images: {
-    domains: ["plant-id.ams3.cdn.digitaloceanspaces.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "plant-id.ams3.cdn.digitaloceanspaces.com",
+      },
+    ],
   },
-}
+};
 
 // Merge MDX config with Next.js config
-module.exports = withMDX(nextConfig)
+module.exports = withMDX(nextConfig);

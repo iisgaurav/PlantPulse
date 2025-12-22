@@ -1,14 +1,14 @@
-import { ThemeProvider } from "@/components/theme-provider"
-import type { Metadata } from "next"
-import { siteConfig } from "@/config/site"
-import { Inter } from "next/font/google"
-import { Navbar } from "@/components/navbar"
-import { Toaster } from "@/components/ui/toaster"
-import Footer from "@/components/footer"
-import "./globals.css"
-import QueryWrapper from "@/components/wrapper/query-wrapper"
+import Footer from "@/components/footer";
+import { Navbar } from "@/components/navbar";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import QueryWrapper from "@/components/wrapper/query-wrapper";
+import { siteConfig } from "@/config/site";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -50,10 +50,6 @@ export const metadata: Metadata = {
     images: [siteConfig.ogImage],
     creator: "@iisgaurav",
   },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
   authors: [
     {
       name: "Gaurav Verma",
@@ -65,12 +61,19 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
-}
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
@@ -85,5 +88,5 @@ export default function RootLayout({
         </QueryWrapper>
       </body>
     </html>
-  )
+  );
 }

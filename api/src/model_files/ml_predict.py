@@ -1,105 +1,146 @@
 from PIL import Image
 import torch
-from torchvision.transforms import ToTensor
 import torchvision.transforms as transforms
-
+from torchvision import models
 import torch.nn as nn
-import torch.nn.functional as F
-import pickle
 import io
 import json
+import os
 
-# Model class to define the architecture
-class Network(nn.Module):
-    def __init__(self):
-        super(Network,self).__init__()
-        self.conv1= nn.Conv2d(in_channels=3,out_channels=6,kernel_size=5)
-        self.conv2= nn.Conv2d(in_channels=6,out_channels=12,kernel_size=5)
-        self.conv3= nn.Conv2d(in_channels=12,out_channels=24,kernel_size=5)
-        self.conv4= nn.Conv2d(in_channels=24,out_channels=48,kernel_size=5)
-        
-        
-        self.fc1 = nn.Linear(in_features=48*12*12,out_features=240)
-        self.fc2 = nn.Linear(in_features=240,out_features=120)
-        self.out = nn.Linear(in_features=120,out_features=17)
-        
-        
-    def forward(self,t):
-        t = t
-        
-        t=self.conv1(t)
-        t=F.relu(t)
-        t=F.max_pool2d(t,kernel_size = 2, stride = 2)
-        
-        
-        t=self.conv2(t)
-        t=F.relu(t)
-        t=F.max_pool2d(t,kernel_size = 2, stride = 2)
+# Get the directory where this script is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-        t=self.conv3(t)
-        t=F.relu(t)
-        t=F.max_pool2d(t,kernel_size = 2, stride = 2)
+# Class labels for PlantVillage dataset (38 classes)
+CLASS_NAMES = [
+    'Apple___Apple_scab',
+    'Apple___Black_rot',
+    'Apple___Cedar_apple_rust',
+    'Apple___healthy',
+    'Blueberry___healthy',
+    'Cherry___Powdery_mildew',
+    'Cherry___healthy',
+    'Corn___Cercospora_leaf_spot Gray_leaf_spot',
+    'Corn___Common_rust',
+    'Corn___Northern_Leaf_Blight',
+    'Corn___healthy',
+    'Grape___Black_rot',
+    'Grape___Esca_(Black_Measles)',
+    'Grape___Leaf_blight_(Isariopsis_Leaf_Spot)',
+    'Grape___healthy',
+    'Orange___Haunglongbing_(Citrus_greening)',
+    'Peach___Bacterial_spot',
+    'Peach___healthy',
+    'Pepper___Bacterial_spot',
+    'Pepper___healthy',
+    'Potato___Early_blight',
+    'Potato___Late_blight',
+    'Potato___healthy',
+    'Raspberry___healthy',
+    'Soybean___healthy',
+    'Squash___Powdery_mildew',
+    'Strawberry___Leaf_scorch',
+    'Strawberry___healthy',
+    'Tomato___Bacterial_spot',
+    'Tomato___Early_blight',
+    'Tomato___Late_blight',
+    'Tomato___Leaf_Mold',
+    'Tomato___Septoria_leaf_spot',
+    'Tomato___Spider_mites Two-spotted_spider_mite',
+    'Tomato___Target_Spot',
+    'Tomato___Tomato_Yellow_Leaf_Curl_Virus',
+    'Tomato___Tomato_mosaic_virus',
+    'Tomato___healthy'
+]
 
-        t=self.conv4(t)
-        t=F.relu(t)
-        t=F.max_pool2d(t,kernel_size = 2, stride = 2)
-        
-        t=t.reshape(-1,48*12*12)
-        t=self.fc1(t)
-        t=F.relu(t)
-        
-        
-        t=self.fc2(t)
-        t=F.relu(t)
-        
-        t=self.out(t)
-        
-        
-        return t
+NUM_CLASSES = len(CLASS_NAMES)
+
+# Image transforms for ResNet18
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+])
+
+
+def get_model(num_classes=NUM_CLASSES):
+    """Create a ResNet18 model with custom number of output classes"""
+    model = models.resnet18(weights=None)
+    # Replace the final fully connected layer
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model
+
+
+def load_model():
+    """Load the trained ResNet18 model"""
+    model = get_model(NUM_CLASSES)
+    model_path = os.path.join(BASE_DIR, 'plant_disease_resnet18.pth')
+    
+    # Load model weights
+    state_dict = torch.load(model_path, map_location=torch.device('cpu'))
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model
 
 
 def get_remedy(plant_disease):
-    with open("model_files/data.json", 'r') as f:
-	    remedies = json.load(f)
+    """Get remedy for a given plant disease"""
+    data_path = os.path.join(BASE_DIR, 'data.json')
+    with open(data_path, 'r') as f:
+        remedies = json.load(f)
+    
     # Get remedy for the given plant disease
-    for key in remedies:
-        if key == plant_disease:
-            return(remedies[key])
+    if plant_disease in remedies:
+        return remedies[plant_disease]
+    return None
 
 
-# to avoid gradients update
+# Global model instance (loaded once)
+_model = None
+
+
+def get_cached_model():
+    """Get or load the cached model"""
+    global _model
+    if _model is None:
+        _model = load_model()
+    return _model
+
+
 @torch.no_grad()
-def predict_plant(model,imgdata):
-    global plant_disease
-    with open('model_files/labels.json', 'rb') as lb:
-        labels = pickle.load(lb)
-
-    loaded_model = model
-    loaded_model.load_state_dict(torch.load("model_files/model.pth"))
-    loaded_model.eval()
-
-    # Converting Base64 string to Image
+def predict_plant(imgdata):
+    """Predict plant disease from image data"""
+    model = get_cached_model()
+    
+    # Convert bytes to PIL Image
     image = Image.open(io.BytesIO(imgdata))
-    # Resizing Image
-    resize = transforms.Compose([transforms.Resize((256,256))])
-    image = ToTensor()(image)
-
-    # Getting prediction from model
-    y_result = model(resize(image).unsqueeze(0))
-    result_idx = y_result.argmax(dim=1)
-
-    # Getting Plant disease from result
-    for key,value in labels.items():
-        if(value == result_idx):
-            plant_disease= key
-            break
-    if ("healthy" not in plant_disease):
-        # Get remedy for given plant disease
-        try:
-            remedy = get_remedy(plant_disease)
-        except:
-            remedy = "Not Found!"
+    
+    # Convert RGBA to RGB if necessary
+    if image.mode == 'RGBA':
+        image = image.convert('RGB')
+    elif image.mode != 'RGB':
+        image = image.convert('RGB')
+    
+    # Apply transforms
+    input_tensor = transform(image).unsqueeze(0)
+    
+    # Get prediction
+    outputs = model(input_tensor)
+    probabilities = torch.nn.functional.softmax(outputs, dim=1)
+    confidence, predicted_idx = torch.max(probabilities, 1)
+    
+    # Get the class name
+    plant_disease = CLASS_NAMES[predicted_idx.item()]
+    confidence_score = confidence.item()
+    
+    # Get remedy
+    if "healthy" not in plant_disease.lower():
+        remedy = get_remedy(plant_disease)
+        if remedy is None:
+            remedy = f"No specific remedy found for {plant_disease}. Please consult a plant specialist."
     else:
-        remedy = "Plant is Healthy"
-
-    return plant_disease,remedy
+        remedy = "Your plant is healthy! Keep up the good care."
+    
+    return plant_disease, remedy, confidence_score
