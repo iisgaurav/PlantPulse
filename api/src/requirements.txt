@@ -1,7 +1,7 @@
 # PyTorch CPU version for deployment
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.0.1+cpu
-torchvision==0.15.2+cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
 
 # Core dependencies
 numpy
