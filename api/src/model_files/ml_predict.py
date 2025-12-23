@@ -6,11 +6,12 @@ import torch.nn as nn
 import io
 import json
 import os
+import torch.nn.functional as F
 
 # Get the directory where this script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Class labels for PlantVillage dataset (38 classes)
+# Class labels for New Plant Diseases Dataset (87k images)
 CLASS_NAMES = [
     'Apple___Apple_scab',
     'Apple___Black_rot',
@@ -63,6 +64,54 @@ transform = transforms.Compose([
         std=[0.229, 0.224, 0.225]
     )
 ])
+
+
+def is_plant_image(image_tensor):
+    """Advanced check to see if image looks like it contains a plant based on multiple features"""
+    # Convert tensor to numpy for analysis
+    img_np = image_tensor.squeeze().cpu().numpy().transpose(1, 2, 0)
+    
+    # Get color channels
+    green_channel = img_np[:, :, 1]  # Green channel
+    red_channel = img_np[:, :, 0]    # Red channel
+    blue_channel = img_np[:, :, 2]   # Blue channel
+    
+    # Calculate average values
+    avg_green = green_channel.mean()
+    avg_red = red_channel.mean()
+    avg_blue = blue_channel.mean()
+    
+    # Calculate standard deviations
+    green_std = green_channel.std()
+    red_std = red_channel.std()
+    blue_std = blue_channel.std()
+    
+    # Check if green is significantly higher than red/blue (common in plant images)
+    green_dominant = avg_green > avg_red * 0.7 and avg_green > avg_blue * 0.7
+    
+    # Check for sufficient texture variation (common in plant leaves)
+    texture_varied = green_std > 0.08 or red_std > 0.08 or blue_std > 0.08
+    
+    # Check if image isn't too dark or too bright
+    brightness_ok = 0.15 < avg_green < 0.85 and 0.15 < avg_red < 0.85 and 0.15 < avg_blue < 0.85
+    
+    # Additional check: color distribution patterns
+    color_balance = abs(avg_green - avg_red) < 0.25 and abs(avg_green - avg_blue) < 0.25
+    
+    # For human faces, typically red and green are more balanced, and there's less texture variation
+    human_like = abs(avg_red - avg_green) < 0.05 and abs(avg_red - avg_blue) < 0.05
+    
+    # For plant images, there should be more texture and potentially more green
+    if green_dominant and texture_varied and brightness_ok:
+        return True
+    
+    # Additional check: if it's not human-like but has some plant characteristics
+    if not human_like and texture_varied and brightness_ok:
+        return True
+    
+    # For non-plant images (like faces), they usually have more balanced red/green/blue
+    # and less texture variation in the way plants do
+    return False
 
 
 def get_model(num_classes=NUM_CLASSES):
@@ -126,14 +175,26 @@ def predict_plant(imgdata):
     # Apply transforms
     input_tensor = transform(image).unsqueeze(0)
     
+    # Check if image appears to contain a plant
+    if not is_plant_image(input_tensor[0]):
+        return "Not a Plant", "Image does not appear to contain a plant. Please upload an image of a plant leaf or part for disease detection.", 0.0
+    
     # Get prediction
     outputs = model(input_tensor)
     probabilities = torch.nn.functional.softmax(outputs, dim=1)
     confidence, predicted_idx = torch.max(probabilities, 1)
     
+    # If image appears to be non-plant, return with low confidence
+    if not is_plant_image(input_tensor[0]):
+        return "Not a Plant", "Image does not appear to contain a plant. Please upload an image of a plant leaf or part for disease detection.", 0.0
+    
     # Get the class name
     plant_disease = CLASS_NAMES[predicted_idx.item()]
     confidence_score = confidence.item()
+    
+    # Additional check: if confidence is too low, it might be a non-plant image
+    if confidence_score < 0.3:
+        return "Not a Plant", "Image does not appear to contain a plant. Please upload an image of a plant leaf or part for disease detection.", 0.0
     
     # Get remedy
     if "healthy" not in plant_disease.lower():

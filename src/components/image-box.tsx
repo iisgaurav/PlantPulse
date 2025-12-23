@@ -18,6 +18,25 @@ export function ImageBox() {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
+  const { isPending, data, mutate, reset } = useMutation<MLPrediction, Error, string>({
+    mutationFn: async (base64Image: string) => {
+      const response = await fetch(ML_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image: base64Image }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to detect disease");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      // Mutation automatically updates the data state
+    },
+  });
+
   function onImageUpload(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || !e.target.files[0]) return;
     handleFile(e.target.files[0]);
@@ -25,6 +44,10 @@ export function ImageBox() {
 
   function handleFile(file: File) {
     setImageFile(file);
+    // Reset the mutation state when a new file is uploaded
+    if (data) {
+      reset();
+    }
     toast({
       variant: "success",
       title: "Image Uploaded",
@@ -40,22 +63,6 @@ export function ImageBox() {
       handleFile(e.dataTransfer.files[0]);
     }
   }
-
-  const { isPending, data, mutate } = useMutation<MLPrediction, Error, string>({
-    mutationFn: async (base64Image: string) => {
-      const response = await fetch(ML_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ image: base64Image }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to detect disease");
-      }
-      return response.json();
-    },
-  });
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -86,8 +93,6 @@ export function ImageBox() {
 
         {/* Upload Card */}
         <form
-          encType="multipart/form-data"
-          method="post"
           onSubmit={handleSubmit}
         >
           <div className="glass-card rounded-3xl p-8 md:p-12">
@@ -175,7 +180,6 @@ export function ImageBox() {
                   className="hidden"
                   accept=".png, .jpeg, .jpg"
                   onChange={onImageUpload}
-                  required
                 />
               </div>
             </label>
@@ -206,7 +210,7 @@ export function ImageBox() {
               ) : (
                 <Button
                   type="submit"
-                  disabled={isPending || !!data}
+                  disabled={isPending}
                   size="lg"
                   className="px-8 py-6 text-lg rounded-full gradient-bg text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 btn-nature"
                 >
@@ -227,10 +231,10 @@ export function ImageBox() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M5 13l4 4L19 7"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         />
                       </svg>
-                      Analysis Complete
+                      Re-Detect Disease
                     </>
                   ) : (
                     <>

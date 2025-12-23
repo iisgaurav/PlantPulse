@@ -18,6 +18,16 @@ def predict():
         # Get prediction from ResNet18 model
         result, remedy, confidence = predict_plant(imgdata)
         
+        # Handle case where image is not a plant
+        if result == "Not a Plant":
+            response = {
+                "plant": "Not a Plant",
+                "disease": "Not a Plant",
+                "remedy": remedy,
+                "confidence": round(confidence * 100, 2)
+            }
+            return jsonify(response)
+        
         # Parse plant and disease from result
         parts = result.split("___")
         plant = parts[0].replace("_", " ")

@@ -35,6 +35,10 @@ PlantPulse is a modern web application that helps farmers and plant enthusiasts 
 
 ---
 
+## 🌱 About the Model
+
+PlantPulse uses a ResNet18 model trained on the New Plant Diseases Dataset (87k images), providing accurate detection across 38 different plant diseases and healthy plant identification.
+
 ## 🌱 Supported Plants & Diseases
 
 | Plant | Diseases Detected |
