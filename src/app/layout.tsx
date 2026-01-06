@@ -79,7 +79,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <QueryWrapper>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem enableColorScheme>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            enableColorScheme
+          >
             <Navbar />
             {children}
             <Footer />

@@ -1,6 +1,5 @@
-
-import HowItWorks from "@/components/how-it-works"
-import Introduction from "@/components/intro"
+import HowItWorks from "@/components/how-it-works";
+import Introduction from "@/components/intro";
 
 export default function Landing() {
   return (
@@ -8,5 +7,5 @@ export default function Landing() {
       <Introduction />
       <HowItWorks />
     </main>
-  )
+  );
 }

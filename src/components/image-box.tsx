@@ -18,7 +18,11 @@ export function ImageBox() {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
-  const { isPending, data, mutate, reset } = useMutation<MLPrediction, Error, string>({
+  const { isPending, data, mutate, reset } = useMutation<
+    MLPrediction,
+    Error,
+    string
+  >({
     mutationFn: async (base64Image: string) => {
       const response = await fetch(ML_API_URL, {
         method: "POST",
@@ -92,9 +96,7 @@ export function ImageBox() {
         </div>
 
         {/* Upload Card */}
-        <form
-          onSubmit={handleSubmit}
-        >
+        <form onSubmit={handleSubmit}>
           <div className="glass-card rounded-3xl p-8 md:p-12">
             <label
               htmlFor="plant-image"
